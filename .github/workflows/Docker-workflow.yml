@@ -1,4 +1,5 @@
 name: Docker Workflow
+
 on:
   push:
     paths:
@@ -7,22 +8,51 @@ on:
 
 jobs:
   build_Docker_image:
-    name: Push Docker image to Docker hub
+    name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Set up JDK 11
         uses: actions/setup-java@v3
         with:
           java-version: '11'
           distribution: 'adopt'
           architecture: x64
-      - name: Clean
+
+      - name: Clean project
         run: mvn -ntp clean
-      - name: Build
+
+      - name: Build project
         run: mvn -ntp compile
-      - name: Short tests
+
+      - name: Run short tests
         run: mvn -ntp test -Dtest='CalculatorTest'
-      - name: Long tests
+
+      - name: Run long tests
         run: mvn -ntp test -Dtest='CalculatorTestThorough'
+
+      - name: Package application
+        run: mvn -ntp package
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: rileyballard6/github-actions-calculator
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
